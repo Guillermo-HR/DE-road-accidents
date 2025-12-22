@@ -66,6 +66,14 @@ Distributed under the MIT License. See `LICENSE` for more information.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
+<!-- CREDIT -->
+## Credit
+This project was developed by Guillermo Hernández Ruiz as part of his learning journey in data engineering.
+
+All the data used in this project is publicly available on the following websites:
+- [INEGI](https://www.inegi.org.mx/programas/accidentes/#documentacion)
+- [INEGI](https://www.inegi.org.mx/contenidos/programas/accidentes/datosabiertos/conjunto_de_datos_atus_anual_csv.zip)
+
 <!-- CONTACT -->
 ## Contact
 Guillermo Hernández Ruiz - [guillermo.hre@gmail.com](mailto:guillermo.hre@gmail.com)
