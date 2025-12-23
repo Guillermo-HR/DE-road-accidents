@@ -52,6 +52,21 @@ In order to run this project, you will need to have the following software insta
 
 <!-- USAGE EXAMPLES -->
 ## Usage
+1. Navigate to the project directory
+   ```sh
+   cd DE-road-accidents
+   ```
+2. Create .env file from the .env.example
+   ```sh
+   cp .env.example .env
+   ```
+3. Run the make up command to create the docker containers
+   ```sh
+   make up
+   ```
+3. Access MinIO console at `http://localhost:9000` add the following buckets:
+    - bronze
+    - silver
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
