@@ -1,0 +1,87 @@
+services:
+  # -------------------------------------------------------
+  # 1. DATA LAKE (MinIO)
+  # Local directory 'S3' will act as data directory for MinIO
+  # -------------------------------------------------------
+  minio:
+    image: minio/minio
+    container_name: lakehouse_minio
+    ports:
+      - "9000:9000" # API
+      - "9001:9001" # Web Console
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    command: server /data --console-address ":9001"
+    volumes:
+      - ./S3:/data
+
+  # -------------------------------------------------------
+  # 2. PROCESSING (Spark + Delta + Jupyter)
+  # -------------------------------------------------------
+  spark:
+    image: tabulario/spark-iceberg # This image includes Spark, Java and Jupyter
+    container_name: lakehouse_spark
+    depends_on:
+      - minio
+    ports:
+      - "8888:8888" # Jupyter Lab
+      - "8080:8080" # Spark UI
+    environment:
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=us-east-1
+      - AWS_ENDPOINT=http://minio:9000
+      - AWS_ALLOW_HTTP=true
+      - PYSPARK_PYTHON=python3
+    volumes:
+      - ./code:/home/iceberg/notebooks # Scripts and notebooks
+      - ./input_data:/home/iceberg/input_data # Access to input data files
+      # It's not necessary to mount S3 data, Spark will read/write using a connection to MinIO
+
+  # -------------------------------------------------------
+  # 3. DATA INGESTION (NiFi)
+  # -------------------------------------------------------
+  nifi:
+    image: apache/nifi:latest
+    container_name: lakehouse_nifi
+    ports:
+      - "8443:8443" # UI
+    environment:
+      - SINGLE_USER_CREDENTIALS_USERNAME=${SINGLE_USER_CREDENTIALS_USERNAME}
+      - SINGLE_USER_CREDENTIALS_PASSWORD=${SINGLE_USER_CREDENTIALS_PASSWORD}
+      - NIFI_WEB_HTTP_PORT=8443
+    volumes:
+      - ./input_data:/opt/nifi/nifi-current/input_data # NiFi will monitor this folder
+
+  # -------------------------------------------------------
+  # 4. SERVICE LAYER (Postgres)
+  # To store the aggregated data (Gold)
+  # -------------------------------------------------------
+  postgres:
+    image: postgres:13
+    container_name: lakehouse_dw
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5440:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+
+  # -------------------------------------------------------
+  # 5. VISUALIZACIÓN (Superset)
+  # -------------------------------------------------------
+  superset:
+    image: apache/superset
+    container_name: lakehouse_superset
+    ports:
+      - "8088:8088"
+    environment:
+      - SUPERSET_SECRET_KEY=${SUPERSET_SECRET_KEY}
+    depends_on:
+      - postgres
+
+volumes:
+  pg_data: # Postgres data volume
