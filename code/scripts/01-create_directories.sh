@@ -14,8 +14,3 @@ mkdir -p input_data/accidents
 mkdir -p input_data/catalogs
 
 mkdir -p S3
-mkdir -p S3/bronze
-mkdir -p S3/bronze/accidents
-mkdir -p S3/bronze/catalogs
-mkdir -p S3/silver
-mkdir -p S3/silver/accidents_delta
