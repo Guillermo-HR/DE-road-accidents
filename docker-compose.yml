@@ -16,6 +16,18 @@ services:
     volumes:
       - ./S3:/data
 
+  mc:
+    image: minio/mc
+    container_name: lakehouse_client
+    depends_on:
+      - minio
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes:
+      - ./code/scripts:/scripts
+    entrypoint: ["/bin/sh", "/scripts/configure_minio.sh"]
+
   # -------------------------------------------------------
   # 2. PROCESSING (Spark + Delta + Jupyter)
   # -------------------------------------------------------
