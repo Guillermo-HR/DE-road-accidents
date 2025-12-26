@@ -5,9 +5,10 @@
   <summary>Table of Contents</summary>
   <ol>
     <li><a href="#what-is-minio">What is MinIO</a></li>
-    <li><a href="#"></a></li>
-    <li><a href="#"></a></li>
-    <li><a href="#"></a></li>
+    <li><a href="#client-configuration">Client configuration</a></li>
+    <li><a href="#manage-users">Manage users</a></li>
+    <li><a href="#manage-buckets">Manage buckets</a></li>
+    <li><a href="#manage-files-on-buckets">Manage files on buckets</a></li>
   </ol>
 </details>
 
@@ -51,6 +52,8 @@ graph LR
 
 To store data MinIO uses buckets (S3 buckets), in the buckets you can store objects that can be any type of file. 
 
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
 ## Client configuration
 You can manage the MinIO container using the web interface (defined in the `docker-compose.yml` file) or the MinIO client (mc). To use mc you have to configure another container and create an alias.
 ```bash
@@ -69,6 +72,8 @@ mc alias ls
 # Show specific alias
 mc admin info <ALIAS_NAME>
 ```
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ## Manage users
 ### Add a user
@@ -105,6 +110,8 @@ mc admin policy attach <ALIAS_NAME> <POLICY_NAME> --user <USERNAME>
 mc admin policy entities <ALIAS_NAME> --user <USERNAME>
 ```
 
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
+
 ## Manage buckets
 ### Create a bucket
 ```bash
@@ -130,6 +137,8 @@ mc ls <ALIAS_NAME>/<BUCKET_NAME>
 ```bash
 mc rb <ALIAS_NAME>/<BUCKET_NAME>
 ```
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 ## Manage files on buckets
 ### Upload a file
@@ -160,3 +169,5 @@ mc cat <ALIAS_NAME>/<BUCKET_NAME>/<OBJECT_NAME>
 ```bash
 mc rm <ALIAS_NAME>/<BUCKET_NAME>/<OBJECT_NAME>
 ```
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
