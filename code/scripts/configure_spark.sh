@@ -10,4 +10,4 @@ jupyter lab \
   --no-browser \
   --allow-root \
   --NotebookApp.token='' \
-  --notebook-dir=/home/iceberg/notebooks/scripts
+  --notebook-dir=/home/iceberg/notebooks
