@@ -26,8 +26,6 @@ services:
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
       MINIO_RW_USER: ${MINIO_RW_USER}
       MINIO_RW_PASSWORD: ${MINIO_RW_PASSWORD}
-      MINIO_R_USER: ${MINIO_R_USER}
-      MINIO_R_PASSWORD: ${MINIO_R_PASSWORD}
     volumes:
       - ./code/scripts:/scripts
     entrypoint: ["/bin/sh", "/scripts/configure_minio.sh"]
@@ -52,8 +50,8 @@ services:
       - PYSPARK_PYTHON=python3
     volumes:
       - ./code:/home/iceberg/notebooks # Scripts and notebooks
-      - ./input_data:/home/iceberg/input_data # Access to input data files
-      # It's not necessary to mount S3 data, Spark will read/write using a connection to MinIO
+    working_dir: /home/iceberg/notebooks/scripts
+    entrypoint: ["/bin/sh", "/home/iceberg/notebooks/scripts/configure_spark.sh"]
 
   # -------------------------------------------------------
   # 3. DATA INGESTION (NiFi)
