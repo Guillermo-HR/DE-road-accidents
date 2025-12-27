@@ -7,13 +7,8 @@ CLEAN_SCRIPT = ./code/scripts/clean_directories.sh
 # Default command if you just type 'make'
 all: up
 
-# Task to create directories
-dirs:
-	@chmod +x $(SETUP_SCRIPT)
-	@$(SETUP_SCRIPT)
-
 # Task to bring up the project (depends on 'dirs')
-up: dirs
+up: 
 	docker compose up -d
 
 # Task to bring down the project
