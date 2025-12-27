@@ -7,6 +7,7 @@
       <a href="#about-the-project">About The Project</a>
       <ul>
         <li><a href="#built-with">Built With</a></li>
+        <li><a href="#documentation">Documentation</a></li>
       </ul>
     </li>
     <li>
@@ -33,6 +34,9 @@ The aim of the project is to develop a data pipeline that extracts data from var
 - [Python](https://www.python.org/)
 - [Docker](https://www.docker.com/)
 - [Apache spark](https://spark.apache.org/)
+
+### Documentation
+The documentation for this project can be found in the `docs/` directory. It includes information about the project structure, data sources, pip|ieline, architecture and diagrams.
 
 <!-- GETTING STARTED -->
 ## Getting Started
@@ -64,9 +68,6 @@ In order to run this project, you will need to have the following software insta
    ```sh
    make up
    ```
-3. Access MinIO console at `http://localhost:9000` add the following buckets:
-    - bronze
-    - silver
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
