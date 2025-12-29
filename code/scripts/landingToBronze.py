@@ -82,9 +82,9 @@ if __name__ == "__main__":
     print("-"*50)
     print("Starting Landing to Bronze Process")
     print("-"*50)
+
     if not check_file_exists(s3, file_name):
         print(f"> File {file_name} does not exist in the landing bucket.")
         exit(1)
-    
     process_file(file_name)
     #delete_file_from_landing(s3, file_name)
