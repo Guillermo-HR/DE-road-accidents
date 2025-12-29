@@ -9,7 +9,7 @@ all: up
 
 # Task to bring up the project (depends on 'dirs')
 up: 
-	docker compose up -d
+	docker compose up -d --build
 
 # Task to bring down the project
 down:
