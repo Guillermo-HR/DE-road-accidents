@@ -34,27 +34,28 @@ services:
   # 2. PROCESSING (Spark + Delta + Jupyter)
   # -------------------------------------------------------
   spark:
-    image: tabulario/spark-iceberg # This image includes Spark, Java and Jupyter
+    build: .
+    image: pyspark
     container_name: spark
     depends_on:
       - minio
     ports:
-      - "8888:8888" # Jupyter Lab
-      - "8080:8080" # Spark UI
+      - "8888:8888" 
+      - "8080:8080"
     environment:
-      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
-      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-      - AWS_REGION=us-east-1
-      - AWS_ENDPOINT=http://minio:9000
-      - AWS_ALLOW_HTTP=true
-      - PYSPARK_PYTHON=python3
-      # Users for S3
+      - JUPYTER_ENABLE_LAB=yes
+      - GRANT_SUDO=yes
+      - CHOWN_HOME=yes
+      - CHOWN_HOME_OPTS='-R'
+      - NB_UID=1000
+      - NB_GID=1000
       - MINIO_RW_USER=${MINIO_RW_USER}
       - MINIO_RW_PASSWORD=${MINIO_RW_PASSWORD}
+      - AWS_ENDPOINT=http://minio:9000
+    command: start-notebook.sh --NotebookApp.token='' --NotebookApp.password=''
     volumes:
-      - ./code:/home/iceberg/notebooks # Scripts and notebooks
-    working_dir: /home/iceberg/notebooks
-    entrypoint: ["/bin/sh", "/home/iceberg/notebooks/scripts/configure_spark.sh"]
+      - ./code:/home/jovyan/work
+    working_dir: /home/jovyan/work
 
   # -------------------------------------------------------
   # 3. VISUALIZACIÓN (Superset)
