@@ -27,7 +27,7 @@ def create_spark_session():
     try:
         packages = "org.apache.hadoop:hadoop-aws:3.3.4,com.amazonaws:aws-java-sdk-bundle:1.12.262,io.delta:delta-core_2.12:2.4.0"
         return SparkSession.builder \
-            .appName("BronzeToSilver") \
+            .appName("BronzeToSilverAtus") \
             .config("spark.jars.packages", packages) \
             .config("spark.hadoop.fs.s3a.endpoint", "http://minio:9000") \
             .config("spark.hadoop.fs.s3a.access.key", user_rw) \
