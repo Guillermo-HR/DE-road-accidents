@@ -4,20 +4,14 @@
 SETUP_SCRIPT = ./code/scripts/configure_airflow.sh
 CLEAN_SCRIPT = ./code/scripts/clean_directories.sh
 
-# Default command if you just type 'make'
-all: up
-
-# Task to bring up the project (depends on 'dirs')
 up: 
-    @chmod +x $(SETUP_SCRIPT)
+	@chmod +x $(SETUP_SCRIPT)
 	@$(SETUP_SCRIPT)
 	docker compose up -d --build
 
-# Task to bring down the project
 down:
 	docker compose down
 
-# Task to clean directories
 clean: down
 	@chmod +x $(CLEAN_SCRIPT)
 	@$(CLEAN_SCRIPT)
