@@ -1,16 +1,16 @@
-#! /bin/bash
+#!/bin/bash
 
-if [ ! -d "dags" ]; then
-  mkdir dags
-  chmod 777 dags
-fi
+pip install apache-airflow-providers-amazon
 
-if [ ! -d "logs" ]; then
-  mkdir logs
-  chmod 777 logs
-fi
+sleep 10
+airflow db migrate
 
-if [ ! -d "plugins" ]; then
-  mkdir plugins
-  chmod 777 plugins
-fi
+airflow users create \
+    --username $_AF_USER \
+    --password $_AF_PASS \
+    --firstname $_AF_FNAME \
+    --lastname $_AF_LNAME \
+    --role Admin \
+    --email $_AF_EMAIL || true
+    
+airflow scheduler & airflow webserver

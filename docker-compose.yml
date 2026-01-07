@@ -90,6 +90,7 @@ services:
       - ./dags:/opt/airflow/dags
       - ./logs:/opt/airflow/logs
       - ./plugins:/opt/airflow/plugins
+      - ./code/scripts/configure_airflow.sh:/opt/airflow/init_airflow.sh
     environment:
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@airflow-postgres/${POSTGRES_DB}
       - AIRFLOW__CORE__EXECUTOR=LocalExecutor
@@ -100,9 +101,4 @@ services:
       - _AF_FNAME=${AIRFLOW_ADMIN_FIRSTNAME}
       - _AF_LNAME=${AIRFLOW_ADMIN_LASTNAME}
       - _AF_EMAIL=${AIRFLOW_ADMIN_EMAIL}
-    entrypoint: >
-      /bin/bash -c "
-      airflow db init &&
-      airflow users create --username \$$_AF_USER --password \$$_AF_PASS --firstname \$$_AF_FNAME --lastname \$$_AF_LNAME --role Admin --email \$$_AF_EMAIL || true &&
-      airflow scheduler & airflow webserver
-      "
+    entrypoint: ["/bin/bash", "/opt/airflow/init_airflow.sh"]
