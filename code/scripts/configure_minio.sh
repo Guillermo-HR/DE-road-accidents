@@ -17,6 +17,3 @@ mc admin policy attach $ALIAS readwrite --user $MINIO_RW_USER
 mc mb --ignore-existing $ALIAS/landing
 mc mb --ignore-existing $ALIAS/bronze
 mc mb --ignore-existing $ALIAS/silver
-
-
-tail -f /dev/null
