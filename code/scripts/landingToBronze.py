@@ -7,6 +7,7 @@ import boto3
 load_dotenv()
 user_rw = os.getenv("MINIO_RW_USER")
 password_rw = os.getenv("MINIO_RW_PASSWORD")
+aws_endpoint = os.getenv("AWS_ENDPOINT_URL")
 
 def get_parameters():
     try:
@@ -22,7 +23,7 @@ def get_parameters():
 def create_s3_client():
     try:
         return boto3.client( 's3' , 
-                  endpoint_url = 'http://minio:9000',
+                  endpoint_url = aws_endpoint,
                   aws_access_key_id = user_rw,
                   aws_secret_access_key = password_rw,
                   region_name = 'us-east-1',

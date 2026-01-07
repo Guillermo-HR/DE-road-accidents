@@ -51,7 +51,7 @@ services:
       - NB_GID=1000
       - MINIO_RW_USER=${MINIO_RW_USER}
       - MINIO_RW_PASSWORD=${MINIO_RW_PASSWORD}
-      - AWS_ENDPOINT=http://minio:9000
+      - AWS_ENDPOINT=${AWS_ENDPOINT_URL}
     command: start-notebook.sh --NotebookApp.token='' --NotebookApp.password=''
     volumes:
       - ./code:/home/jovyan/work

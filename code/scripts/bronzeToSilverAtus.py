@@ -3,7 +3,6 @@ import os
 import argparse
 from dotenv import load_dotenv
 import boto3
-import pyspark
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import input_file_name, current_timestamp, when, col, concat, lpad, lit
 from pyspark.sql.types import StructType, StructField, StringType, IntegerType
@@ -11,6 +10,7 @@ from pyspark.sql.types import StructType, StructField, StringType, IntegerType
 load_dotenv()
 user_rw = os.getenv("MINIO_RW_USER")
 password_rw = os.getenv("MINIO_RW_PASSWORD")
+aws_endpoint = os.getenv("AWS_ENDPOINT")
 
 def get_parameters():
     try:
@@ -29,7 +29,7 @@ def create_spark_session():
         return SparkSession.builder \
             .appName("BronzeToSilverAtus") \
             .config("spark.jars.packages", packages) \
-            .config("spark.hadoop.fs.s3a.endpoint", "http://minio:9000") \
+            .config("spark.hadoop.fs.s3a.endpoint", aws_endpoint) \
             .config("spark.hadoop.fs.s3a.access.key", user_rw) \
             .config("spark.hadoop.fs.s3a.secret.key", password_rw) \
             .config("spark.hadoop.fs.s3a.path.style.access", "true") \
@@ -46,7 +46,7 @@ def create_spark_session():
 def create_s3_client():
     try:
         return boto3.client( 's3' , 
-                  endpoint_url = 'http://minio:9000',
+                  endpoint_url = aws_endpoint,
                   aws_access_key_id = user_rw,
                   aws_secret_access_key = password_rw,
                   region_name = 'us-east-1',
