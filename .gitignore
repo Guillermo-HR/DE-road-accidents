@@ -209,3 +209,6 @@ __marimo__/
 # storage files
 input_data/*
 S3/*
+
+# airflow
+logs/*
