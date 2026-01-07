@@ -1,7 +1,7 @@
 # Makefile for road-accidents project
 
 # Variable with the path to the setup script
-SETUP_SCRIPT = ./code/scripts/setup_directories.sh
+SETUP_SCRIPT = ./code/scripts/configure_airflow.sh
 CLEAN_SCRIPT = ./code/scripts/clean_directories.sh
 
 # Default command if you just type 'make'
@@ -9,6 +9,8 @@ all: up
 
 # Task to bring up the project (depends on 'dirs')
 up: 
+    @chmod +x $(SETUP_SCRIPT)
+	@$(SETUP_SCRIPT)
 	docker compose up -d --build
 
 # Task to bring down the project
