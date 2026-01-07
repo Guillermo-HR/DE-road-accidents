@@ -1,7 +1,7 @@
 # Makefile for road-accidents project
 
 # Variable with the path to the setup script
-SETUP_SCRIPT = ./code/scripts/configure_airflow.sh
+SETUP_SCRIPT = ./code/scripts/configure_directories.sh
 CLEAN_SCRIPT = ./code/scripts/clean_directories.sh
 
 up: 
