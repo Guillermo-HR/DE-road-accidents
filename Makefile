@@ -1,8 +1,8 @@
 # Makefile for road-accidents project
 
 # Variable with the path to the setup script
-SETUP_SCRIPT = ./code/scripts/configure_directories.sh
-CLEAN_SCRIPT = ./code/scripts/clean_directories.sh
+SETUP_SCRIPT = ./configurationScripts/configure_directories.sh
+CLEAN_SCRIPT = ./configurationScripts/clean_directories.sh
 
 up: 
 	@chmod +x $(SETUP_SCRIPT)
