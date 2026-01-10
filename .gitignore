@@ -214,4 +214,7 @@ input_data/*
 S3/*
 
 # airflow
-logs/*
+airflow/logs/*
+
+# original data files
+original_data/*

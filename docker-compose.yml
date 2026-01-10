@@ -1,7 +1,41 @@
+networks:
+  data-network:
+    driver: bridge
+
+x-airflow-common:
+  &airflow-common
+  build: ./airflow
+  env_file:
+    - .env
+  environment:
+    &airflow-common-env
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres/${POSTGRES_DB}
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+    AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+    
+    AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
+    AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+    AWS_ENDPOINT_URL: http://minio:9000
+    AWS_DEFAULT_REGION: us-east-1
+    
+    AIRFLOW_UID: 50000
+  volumes:
+    - ./airflow/dags:/opt/airflow/dags
+    - ./airflow/logs:/opt/airflow/logs
+    - ./airflow/config:/opt/airflow/config
+    - ./airflow/plugins:/opt/airflow/plugins
+  user: "50000:0"
+  depends_on:
+    &airflow-common-depends-on
+    postgres:
+      condition: service_healthy
+  networks:
+      - data-network
+
 services:
   # -------------------------------------------------------
   # 1. DATA LAKE (MinIO)
-  # Local directory 'S3' will act as data directory for MinIO
   # -------------------------------------------------------
   minio:
     image: minio/minio
@@ -15,12 +49,20 @@ services:
     command: server /data --console-address ":9001"
     volumes:
       - ./S3:/data
+    networks:
+      - data-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
 
   mc:
     image: minio/mc
-    container_name: Se_client
+    container_name: S3_client
     depends_on:
-      - minio
+      minio:
+        condition: service_healthy
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
@@ -28,20 +70,23 @@ services:
       MINIO_RW_PASSWORD: ${MINIO_RW_PASSWORD}
     volumes:
       - ./configurationScripts:/scripts
+    networks:
+      - data-network
     entrypoint: ["/bin/sh", "/scripts/configure_minio.sh"]
 
   # -------------------------------------------------------
-  # 2. PROCESSING (Spark + Delta + Jupyter)
+  # 2. PROCESSING (Spark + Jupyter)
   # -------------------------------------------------------
   spark:
     build: ./spark
-    image: pyspark
+    image: pyspark-custom
     container_name: spark
     depends_on:
-      - minio
+      minio:
+        condition: service_healthy
     ports:
       - "8888:8888" 
-      - "8080:8080"
+      - "4040:4040"
     environment:
       - JUPYTER_ENABLE_LAB=yes
       - GRANT_SUDO=yes
@@ -49,87 +94,102 @@ services:
       - CHOWN_HOME_OPTS='-R'
       - NB_UID=1000
       - NB_GID=1000
-      - MINIO_RW_USER=${MINIO_RW_USER}
-      - MINIO_RW_PASSWORD=${MINIO_RW_PASSWORD}
-      - AWS_ENDPOINT=${AWS_ENDPOINT_URL}
-    command: start-notebook.sh --NotebookApp.token='' --NotebookApp.password=''
+      - AWS_ACCESS_KEY_ID=${MINIO_RW_USER}
+      - AWS_SECRET_ACCESS_KEY=${MINIO_RW_PASSWORD}
+      - AWS_ENDPOINT_URL=${AWS_ENDPOINT_URL}
+      - SPARK_HADOOP_fs_s3a_endpoint=${AWS_ENDPOINT_URL}
+      - SPARK_HADOOP_fs_s3a_access_key=${MINIO_RW_USER}
+      - SPARK_HADOOP_fs_s3a_secret_key=${MINIO_RW_PASSWORD}
+      - SPARK_HADOOP_fs_s3a_path_style_access=true
+      - SPARK_HADOOP_fs_s3a_impl=org.apache.hadoop.fs.s3a.S3AFileSystem
+      - SPARK_HADOOP_fs_s3a_connection_ssl_enabled=false
+    command: start-notebook.py --NotebookApp.token='' --NotebookApp.password=''
     volumes:
       - ./spark:/home/jovyan/work
     working_dir: /home/jovyan/work
+    networks:
+      - data-network
 
   # -------------------------------------------------------
   # 3. ORCHESTRATION (Airflow)
   # -------------------------------------------------------
   postgres:
-      image: postgres:15
+      image: postgres:16
       container_name: airflow-postgres
       environment:
         POSTGRES_USER: ${POSTGRES_USER}
         POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
         POSTGRES_DB: ${POSTGRES_DB}
+      ports:
+        - "5432:5432"
       volumes:
         - postgres-data:/var/lib/postgresql/data
+      networks:
+        - data-network
       healthcheck:
-        test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+        test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER}", "-d", "${POSTGRES_DB}"]
         interval: 10s
         retries: 5
         start_period: 5s
 
-  airflow-init:
-    image: apache/airflow:2.9.3
-    container_name: airflow-init
-    depends_on:
-      postgres:
-        condition: service_healthy
-    environment:
-      AIRFLOW__CORE__EXECUTOR: LocalExecutor
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: >
-        postgresql+psycopg2://${AIRFLOW_DB_USER}:${AIRFLOW_DB_PASSWORD}@postgres/${AIRFLOW_DB_NAME}
-      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
-    volumes:
-      - ./airflow/dags:/opt/airflow/dags
-    entrypoint: /bin/bash
-    command: >
-      -c "
-      airflow db migrate &&
-      airflow users create
-        --username ${AIRFLOW_ADMIN_USER}
-        --password ${AIRFLOW_ADMIN_PASSWORD}
-        --firstname ${AIRFLOW_ADMIN_FIRSTNAME}
-        --lastname ${AIRFLOW_ADMIN_LASTNAME}
-        --role Admin
-        --email ${AIRFLOW_ADMIN_EMAIL}
-      "
-
   airflow-webserver:
-    image: apache/airflow:2.9.3
+    <<: *airflow-common
     container_name: airflow-webserver
-    depends_on:
-      airflow-init:
-        condition: service_completed_successfully
+    command: webserver 
     ports:
       - "8081:8080"
-    environment:
-      AIRFLOW__CORE__EXECUTOR: LocalExecutor
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: >
-        postgresql+psycopg2://${AIRFLOW_DB_USER}:${AIRFLOW_DB_PASSWORD}@postgres/${AIRFLOW_DB_NAME}
-    volumes:
-      - ./airflow/dags:/opt/airflow/dags
-    command: airflow webserver
-
-  airflow-scheduler:
-    image: apache/airflow:2.9.3
-    container_name: airflow-scheduler
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: always
     depends_on:
+      <<: *airflow-common-depends-on
       airflow-init:
         condition: service_completed_successfully
+
+  airflow-scheduler:
+    <<: *airflow-common
+    container_name: airflow-scheduler
+    command: scheduler
+    healthcheck:
+      test: ["CMD-SHELL", "airflow jobs check --job-type SchedulerJob || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+
+  airflow-init:
+    <<: *airflow-common
+    container_name: airflow-init
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        if [[ -z "${AIRFLOW_UID}" ]]; then
+          export AIRFLOW_UID=$$(id -u)
+        fi
+        mkdir -v -p /opt/airflow/{logs,dags,plugins,config}
+        airflow db migrate
+        airflow users create \
+          --username "${AIRFLOW_ADMIN_USER}" \
+          --password "${AIRFLOW_ADMIN_PASSWORD}" \
+          --firstname "${AIRFLOW_ADMIN_FIRSTNAME}" \
+          --lastname "${AIRFLOW_ADMIN_LASTNAME}" \
+          --role Admin \
+          --email "${AIRFLOW_ADMIN_EMAIL}"
     environment:
-      AIRFLOW__CORE__EXECUTOR: LocalExecutor
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: >
-        postgresql+psycopg2://${AIRFLOW_DB_USER}:${AIRFLOW_DB_PASSWORD}@postgres/${AIRFLOW_DB_NAME}
-    volumes:
-      - ./airflow/dags:/opt/airflow/dags
-    command: airflow scheduler
+      <<: *airflow-common-env
+      _AIRFLOW_DB_MIGRATE: 'true'
+      _AIRFLOW_WWW_USER_CREATE: 'true'
+    user: "0:0"
 
 volumes:
   postgres-data:
