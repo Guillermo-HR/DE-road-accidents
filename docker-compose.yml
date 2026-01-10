@@ -5,7 +5,7 @@ services:
   # -------------------------------------------------------
   minio:
     image: minio/minio
-    container_name: datalake_minio
+    container_name: S3
     ports:
       - "9000:9000" # API
       - "9001:9001" # Web Console
@@ -18,7 +18,7 @@ services:
 
   mc:
     image: minio/mc
-    container_name: datalake_client
+    container_name: Se_client
     depends_on:
       - minio
     environment:
@@ -27,14 +27,14 @@ services:
       MINIO_RW_USER: ${MINIO_RW_USER}
       MINIO_RW_PASSWORD: ${MINIO_RW_PASSWORD}
     volumes:
-      - ./code/scripts:/scripts
+      - ./configurationScripts:/scripts
     entrypoint: ["/bin/sh", "/scripts/configure_minio.sh"]
 
   # -------------------------------------------------------
   # 2. PROCESSING (Spark + Delta + Jupyter)
   # -------------------------------------------------------
   spark:
-    build: .
+    build: ./spark
     image: pyspark
     container_name: spark
     depends_on:
@@ -54,51 +54,82 @@ services:
       - AWS_ENDPOINT=${AWS_ENDPOINT_URL}
     command: start-notebook.sh --NotebookApp.token='' --NotebookApp.password=''
     volumes:
-      - ./code:/home/jovyan/work
+      - ./spark:/home/jovyan/work
     working_dir: /home/jovyan/work
 
   # -------------------------------------------------------
-  # 3. VISUALIZACIÓN (Superset)
+  # 3. ORCHESTRATION (Airflow)
   # -------------------------------------------------------
-  superset:
-    image: apache/superset
-    container_name: superset
-    ports:
-      - "8088:8088"
-    environment:
-      - SUPERSET_SECRET_KEY=${SUPERSET_SECRET_KEY}
-    depends_on:
-      - minio
+  postgres:
+      image: postgres:15
+      container_name: airflow-postgres
+      environment:
+        POSTGRES_USER: ${POSTGRES_USER}
+        POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+        POSTGRES_DB: ${POSTGRES_DB}
+      volumes:
+        - postgres-data:/var/lib/postgresql/data
+      healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+        interval: 10s
+        retries: 5
+        start_period: 5s
 
-  # -------------------------------------------------------
-  # 4. ORCHESTRATION (Airflow)
-  # -------------------------------------------------------
-  airflow-postgres:
-    image: postgres:13
-    environment:
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
-  
-  airflow:
-    image: apache/airflow:2.7.1
+  airflow-init:
+    image: apache/airflow:2.9.3
+    container_name: airflow-init
     depends_on:
-      - airflow-postgres
-    ports:
-      - "8090:8080"
-    volumes:
-      - ./dags:/opt/airflow/dags
-      - ./logs:/opt/airflow/logs
-      - ./plugins:/opt/airflow/plugins
-      - ./code/scripts/configure_airflow.sh:/opt/airflow/init_airflow.sh
+      postgres:
+        condition: service_healthy
     environment:
-      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@airflow-postgres/${POSTGRES_DB}
-      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
-      - AIRFLOW__CORE__LOAD_EXAMPLES=False
-      - _PIP_ADDITIONAL_REQUIREMENTS=apache-airflow-providers-amazon
-      - _AF_USER=${AIRFLOW_ADMIN_USER}
-      - _AF_PASS=${AIRFLOW_ADMIN_PASSWORD}
-      - _AF_FNAME=${AIRFLOW_ADMIN_FIRSTNAME}
-      - _AF_LNAME=${AIRFLOW_ADMIN_LASTNAME}
-      - _AF_EMAIL=${AIRFLOW_ADMIN_EMAIL}
-    entrypoint: ["/bin/bash", "/opt/airflow/init_airflow.sh"]
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: >
+        postgresql+psycopg2://${AIRFLOW_DB_USER}:${AIRFLOW_DB_PASSWORD}@postgres/${AIRFLOW_DB_NAME}
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+    entrypoint: /bin/bash
+    command: >
+      -c "
+      airflow db migrate &&
+      airflow users create
+        --username ${AIRFLOW_ADMIN_USER}
+        --password ${AIRFLOW_ADMIN_PASSWORD}
+        --firstname ${AIRFLOW_ADMIN_FIRSTNAME}
+        --lastname ${AIRFLOW_ADMIN_LASTNAME}
+        --role Admin
+        --email ${AIRFLOW_ADMIN_EMAIL}
+      "
+
+  airflow-webserver:
+    image: apache/airflow:2.9.3
+    container_name: airflow-webserver
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+    ports:
+      - "8081:8080"
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: >
+        postgresql+psycopg2://${AIRFLOW_DB_USER}:${AIRFLOW_DB_PASSWORD}@postgres/${AIRFLOW_DB_NAME}
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+    command: airflow webserver
+
+  airflow-scheduler:
+    image: apache/airflow:2.9.3
+    container_name: airflow-scheduler
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: >
+        postgresql+psycopg2://${AIRFLOW_DB_USER}:${AIRFLOW_DB_PASSWORD}@postgres/${AIRFLOW_DB_NAME}
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+    command: airflow scheduler
+
+volumes:
+  postgres-data:
